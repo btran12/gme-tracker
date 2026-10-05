@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GME Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--panel:#fff;--ink:#15171c;--mute:#6a707c;--line:#e4e6eb;--up:#0f9d58;--down:#d93025;--acc:#15171c;--soft:#eef0f3}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1013;--panel:#16191e;--ink:#eef0f3;--mute:#8b919d;--line:#262a31;--up:#34c779;--down:#ff6b5e;--acc:#eef0f3;--soft:#1e2228}}
+:root[data-theme="dark"]{--bg:#0e1013;--panel:#16191e;--ink:#eef0f3;--mute:#8b919d;--line:#262a31;--up:#34c779;--down:#ff6b5e;--acc:#eef0f3;--soft:#1e2228}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Inter Tight",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:880px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.01em}
+h2{font-size:17px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 18px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+.price{display:flex;align-items:baseline;gap:6px;font-size:56px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.price input{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;border-bottom:2px solid var(--line);width:3.6em;padding:0;outline:0;border-radius:0}
+.price input:focus{border-color:var(--ink)}
+.hint{color:var(--mute);font-size:13px;margin-top:8px;max-width:46ch}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);padding:0}
+.stat{padding:20px 24px;border-right:1px solid var(--line)}
+.stat:last-child{border:0}
+.stat span{display:block;color:var(--mute);font-size:13px}
+.stat b{display:block;font-size:22px;font-weight:600;letter-spacing:-.02em;margin-top:2px}
+.stat small{font-size:13px;font-weight:500}
+.up{color:var(--up)}.down{color:var(--down)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute);flex:1;min-width:90px}
+input,select{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;outline:0}
+input:focus,select:focus,button:focus-visible{border-color:var(--ink);outline:2px solid var(--soft);outline-offset:1px}
+button{font:inherit;font-weight:600;font-size:14px;border:0;border-radius:8px;padding:10px 16px;background:var(--acc);color:var(--bg);cursor:pointer}
+button.ghost{background:none;color:var(--mute);padding:6px 8px;font-weight:500}
+button.ghost:hover{color:var(--ink)}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
+.seg button{background:none;color:var(--mute);padding:7px 14px;flex:1}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:18px}
+th{font-weight:500;color:var(--mute);text-align:right;font-size:12px;padding:0 8px 8px}
+td{padding:11px 8px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+th:last-child,td:last-child{padding-right:0;width:40px;white-space:nowrap}
+.tag{font-weight:600}
+.scroll{overflow-x:auto}
+.empty{color:var(--mute);padding:28px 0 8px;text-align:center;font-size:14px}
+details{margin-top:16px;font-size:13px;color:var(--mute)}
+summary{cursor:pointer}
+details .row{margin-top:12px}
+svg text{font-family:inherit}
+#chart{position:relative}
+.tip{position:absolute;display:none;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;line-height:1.4;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mute{color:var(--mute)}
+.bar{height:6px;background:var(--soft);border-radius:3px;min-width:80px}
+.bar i{display:block;height:100%;background:var(--ink);border-radius:3px}
+.wcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:20px}
+.wcards:empty{display:none}
+.wc{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.wc span{display:block;color:var(--mute);font-size:13px;padding-right:24px}
+.wc b{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em;margin:2px 0}
+.wc small{color:var(--mute);font-size:13px}
+.wc button{position:absolute;top:8px;right:6px}
+.wc .r{display:flex;justify-content:space-between;gap:8px;color:var(--mute);font-size:13px;margin-top:4px}
+.wc .r em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
+.wc .r em.up{color:var(--up)}.wc .r em.down{color:var(--down)}
+.wc hr{border:0;border-top:1px solid var(--line);margin:10px 0 6px}
+@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}.stat:nth-child(even){border-right:0}.stat:nth-child(-n+4){border-bottom:1px solid var(--line)}.stat{padding:16px 18px}.price{font-size:44px}section{padding:18px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>GME portfolio</h1>
+    <div class="hint" style="margin:0 0 14px">GameStop Corp. (NYSE: GME)</div>
+    <div class="price">$<input id="price" inputmode="decimal" aria-label="Current GME share price"></div>
+    <div class="hint" id="status">Connecting to live quote…</div>
+  </div>
+</header>
+
+<section class="stats" id="stats"></section>
+<div class="wcards" id="wcards"></div>
+
+<section>
+  <h2>Value over time</h2>
+  <p class="sub">Shares held × GME's historical price.</p>
+  <div class="seg" id="rng" style="width:max-content;margin-bottom:12px"><button data-r="1D">1D</button><button data-r="1W">1W</button><button data-r="1M" class="on">1M</button><button data-r="1Y">1Y</button><button data-r="3Y">3Y</button><button data-r="5Y">5Y</button></div>
+  <div id="chart"></div>
+</section>
+
+<section>
+  <h2>Your trades</h2>
+  <p class="sub">Log each buy and sell. Average cost updates automatically.</p>
+  <div class="row">
+    <div class="seg" id="seg" style="align-self:flex-end"><button class="on" data-t="buy">Buy</button><button data-t="sell">Sell</button></div>
+    <label>Date<input type="date" id="date"></label>
+    <label>Shares<input id="qty" inputmode="decimal" placeholder="0"></label>
+    <label>Price per share<input id="tp" inputmode="decimal" placeholder="0.00"></label>
+    <button id="add">Add trade</button>
+  </div>
+  <div class="scroll" id="txs"></div>
+  <details><summary>Set shares and average cost manually</summary>
+    <div class="row">
+      <label>Total shares<input id="osh" inputmode="decimal"></label>
+      <label>Total cost basis<input id="oav" inputmode="decimal"></label>
+      <button id="oset">Apply</button><button class="ghost" id="oclr">Use trades instead</button>
+    </div>
+    <div class="hint" id="oavg"></div>
+  </details>
+</section>
+
+<section>
+  <h2>Leaderboard</h2>
+  <p class="sub">Add other big holders and see how their stake compares with yours at the current price.</p>
+  <div class="row">
+    <label style="flex:2">Name<input id="wn" placeholder="e.g. Ryan Cohen"></label>
+    <label>Shares<input id="ws" inputmode="decimal" placeholder="0"></label>
+    <label>Avg cost (optional)<input id="wc" inputmode="decimal" placeholder="0.00"></label>
+    <button id="wadd">Add</button>
+  </div>
+  <div class="hint" id="wtot"></div>
+  <div class="scroll" id="whales"></div>
+</section>
+</main>
+
+<script>
+var HIST=[],RANGE="1M",KEY="gme-tracker-v1",S={price:25,txs:[],whales:[],ov:null},type="buy";
+try{var raw=localStorage.getItem(KEY);if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var $=function(i){return document.getElementById(i)};
+var usd=function(n,d){return(n<0?"-":"")+"$"+Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d})};
+var num=function(v){var n=parseFloat(String(v).replace(/,/g,""));return isFinite(n)?n:NaN};
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+var sh=function(n){return n.toLocaleString("en-US",{maximumFractionDigits:4})};
+var cls=function(n){return n>=0?"up":"down"};
+var sg=function(n){return(n>=0?"+":"")+usd(n)};
+
+function calc(){
+  var t=S.txs.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id});
+  var shares=0,cost=0,real=0,series=[];
+  t.forEach(function(x){
+    if(x.type==="buy"){shares+=x.qty;cost+=x.qty*x.price}
+    else{var q=Math.min(x.qty,shares);if(shares>0){var a=cost/shares;real+=(x.price-a)*q;cost-=a*q;shares-=q}}
+    series.push({d:x.date,v:shares*x.price,s:shares,p:x.price});
+  });
+  if(S.ov){shares=S.ov.shares;cost=S.ov.shares*S.ov.avg}
+  return{t:t,shares:shares,cost:cost,avg:shares?cost/shares:0,real:real,series:series};
+}
+
+function render(){
+  var c=calc(),val=c.shares*S.price,pl=val-c.cost,pct=c.cost?pl/c.cost*100:0;
+  $("stats").innerHTML=
+    '<div class="stat"><span>Total value</span><b>'+usd(val)+'</b></div>'+
+    '<div class="stat"><span>Total cost basis</span><b>'+usd(c.cost)+'</b></div>'+
+    '<div class="stat"><span>Shares</span><b>'+sh(c.shares)+'</b></div>'+
+    '<div class="stat"><span>Average cost'+(S.ov?' (manual)':'')+'</span><b>'+usd(c.avg)+'</b></div>'+
+    '<div class="stat"><span>Unrealized gain</span><b class="'+cls(pl)+'">'+sg(pl)+'</b><small class="'+cls(pl)+'">'+(pct>=0?"+":"")+pct.toFixed(1)+'%</small>'+
+    (c.real?' <small style="color:var(--mute)">· realized '+sg(c.real)+'</small>':'')+'</div>';
+  chart(c);
+  // trades
+  var h="";
+  if(!c.t.length)h='<div class="empty">No trades yet. Add your first buy above.</div>';
+  else{
+    h='<table><thead><tr><th>Date</th><th>Type</th><th>Shares</th><th>Price</th><th>Amount</th><th></th></tr></thead><tbody>';
+    c.t.slice().reverse().forEach(function(x){
+      h+='<tr><td>'+esc(x.date)+'</td><td class="tag '+(x.type==="buy"?"up":"down")+'">'+(x.type==="buy"?"Buy":"Sell")+'</td><td>'+sh(x.qty)+'</td><td>'+usd(x.price)+'</td><td>'+usd(x.qty*x.price)+'</td><td><button class="ghost" data-del="'+x.id+'" aria-label="Delete trade">✕</button></td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  $("txs").innerHTML=h;
+  $("wcards").innerHTML=S.whales.map(function(w,i){
+    var v=w.shares*S.price,hc=w.cost>0,basis=hc?w.shares*w.cost:0,g=v-basis,vs=c.shares>0?w.shares/c.shares:0;
+    var r=function(k,x,k2){return'<div class="r">'+k+'<em'+(k2?' class="'+k2+'"':'')+'>'+x+'</em></div>'};
+    return'<div class="wc"><span>'+esc(w.name)+'</span><b>'+usd(v,0)+'</b><small>'+sh(w.shares)+' shares</small><hr>'+
+      r('Avg cost',hc?usd(w.cost):'—')+r('Cost basis',hc?usd(basis,0):'—')+
+      r('Gain',hc?sg(g).replace(/\.\d\d$/,'')+' ('+(g>=0?'+':'')+(g/basis*100).toFixed(1)+'%)':'—',hc?cls(g):'')+
+      r('vs. you',vs?vs.toFixed(vs<10?2:0)+'×':'—')+
+      '<button class="ghost" data-wdel="'+i+'" aria-label="Remove holder">✕</button></div>'}).join("");
+  // whales
+  var rows=S.whales.map(function(w,i){return{n:w.name,s:w.shares,c:w.cost,i:i}});
+  if(c.shares>0)rows.push({n:"You",s:c.shares,c:c.avg,me:1});
+  rows.sort(function(a,b){return b.s-a.s});
+  var max=rows.length?rows[0].s:1;
+  if(!rows.length)h='<div class="empty">No holders added yet.</div>';
+  else{
+    h='<table><thead><tr><th>Holder</th><th>Shares</th><th>Value</th><th>vs. you</th><th>Gain</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var v=r.s*S.price,vs=c.shares?(r.s/c.shares):null;
+      var g=r.c?(v-r.s*r.c):null;
+      h+='<tr><td style="font-weight:'+(r.me?700:500)+'">'+esc(r.n)+'<div class="bar" style="margin-top:6px"><i style="width:'+(r.s/max*100)+'%"></i></div></td><td>'+sh(r.s)+'</td><td>'+usd(v,0)+'</td><td>'+(r.me?'—':vs?vs.toFixed(vs<10?2:0)+'×':'—')+'</td><td class="'+(g==null?"":cls(g))+'">'+(g==null?'—':sg(g).replace(/\.\d\d$/,""))+'</td><td>'+(r.me?'':'<button class="ghost" data-wadd="'+r.i+'" aria-label="Add to position" title="Add to position">+</button><button class="ghost" data-wdel="'+r.i+'" aria-label="Remove holder">✕</button>')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  $("whales").innerHTML=h;
+}
+
+function chart(c){
+  var ld=function(ms){var d=new Date(ms);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+  var j=0,s=0,pts=[];
+  if(c.t.length||S.ov)HIST.forEach(function(h){
+    var n;
+    if(S.ov)n=S.ov.shares;
+    else{var day=ld(h.t);while(j<c.series.length&&c.series[j].d<=day){s=c.series[j].s;j++}n=s}
+    if(n>0)pts.push({d:h.t,v:n*h.c,s:n,p:h.c})});
+  if(pts.length&&c.shares>0){pts.push({d:Date.now(),v:c.shares*S.price,s:c.shares,p:S.price,now:1})}
+  if(pts.length<2){$("chart").innerHTML='<div class="empty">'+(!(c.t.length||S.ov)?'Add a trade to see your portfolio value over time.':HIST.length?'No holdings in this time range.':'Loading price history…')+'</div>';return}
+  var W=760,H=260,L=56,R=16,T=14,B=30,tm=function(d){return d};
+  var x0=tm(pts[0].d),x1=tm(pts[pts.length-1].d),span=Math.max(x1-x0,1);
+  var vs=pts.map(function(p){return p.v}),mx=Math.max.apply(0,vs),mn=Math.min.apply(0,vs);
+  if(mx===mn)mx=mn+1;
+  var pad=(mx-mn)*.08;mx+=pad;mn=Math.max(0,mn-pad);
+  var yd=mx-mn<10?2:0;
+  var X=function(d){return L+(tm(d)-x0)/span*(W-L-R)},Y=function(v){return T+(1-(v-mn)/(mx-mn))*(H-T-B)};
+  // step-like path: value holds until next trade is repriced
+  var d="",first=true;
+  pts.forEach(function(p){d+=(first?"M":"L")+X(p.d).toFixed(1)+" "+Y(p.v).toFixed(1)+" ";first=false});
+  var area=d+"L"+X(pts[pts.length-1].d).toFixed(1)+" "+Y(mn).toFixed(1)+" L"+X(pts[0].d).toFixed(1)+" "+Y(mn).toFixed(1)+" Z";
+  var g="";
+  for(var i=0;i<=4;i++){var v=mn+(mx-mn)*i/4,y=Y(v);g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="var(--mute)">'+usd(v,yd)+'</text>'}
+  var fmt=function(s,full){var o=RANGE==="1D"?{hour:"numeric",minute:"2-digit"}:RANGE==="1W"?{month:"short",day:"numeric",hour:"numeric",minute:full?"2-digit":undefined}:{month:"short",day:"numeric",year:"2-digit"};return new Date(s).toLocaleString("en-US",o)};
+  for(var k=0;k<=5;k++){var tx=x0+span*k/5;g+='<line x1="'+X(tx).toFixed(1)+'" x2="'+X(tx).toFixed(1)+'" y1="'+(H-B)+'" y2="'+(H-B+4)+'" stroke="var(--line)"/><text x="'+X(tx).toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(k===0?"start":k===5?"end":"middle")+'" font-size="11" fill="var(--mute)">'+fmt(tx)+'</text>'}
+  var dots=pts.slice(-1).map(function(p){return'<circle cx="'+X(p.d).toFixed(1)+'" cy="'+Y(p.v).toFixed(1)+'" r="'+(p.now?5:3.5)+'" fill="'+(p.now?"var(--ink)":"var(--panel)")+'" stroke="var(--ink)" stroke-width="2"><title>'+fmt(p.d)+(p.now?' (now)':'')+': '+usd(p.v)+' · '+sh(p.s)+' shares @ '+usd(p.p)+'</title></circle>'}).join("");
+  $("chart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Portfolio value over time">'+g+'<path d="'+area+'" fill="var(--ink)" opacity=".06"/><path d="'+d+'" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>'+dots+'<line id="cl" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--mute)" stroke-dasharray="3 3" visibility="hidden"/><circle id="cc" r="5" fill="var(--ink)" visibility="hidden"/></svg><div class="tip" id="tip"></div>';
+  var svg=$("chart").firstChild,cl=$("cl"),cc=$("cc"),tip=$("tip");
+  svg.style.touchAction="pan-y";
+  svg.addEventListener("pointermove",function(e){
+    var r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*W,best=pts[0],bd=1/0;
+    pts.forEach(function(p){var dd=Math.abs(X(p.d)-sx);if(dd<bd){bd=dd;best=p}});
+    var px=X(best.d),py=Y(best.v);
+    cl.setAttribute("x1",px);cl.setAttribute("x2",px);cc.setAttribute("cx",px);cc.setAttribute("cy",py);
+    cl.setAttribute("visibility","visible");cc.setAttribute("visibility","visible");
+    tip.innerHTML='<div class="mute">'+fmt(best.d,1)+'</div>GME <b>'+usd(best.p)+'</b><br>Value <b>'+usd(best.v)+'</b> <span class="mute">· '+sh(best.s)+' sh</span>';
+    tip.style.display="block";
+    var tw=tip.offsetWidth,left=px/W*r.width+12;
+    if(left+tw>r.width)left=px/W*r.width-tw-12;
+    tip.style.left=Math.max(0,left)+"px";tip.style.top=Math.max(0,py/H*r.height-tip.offsetHeight-8)+"px"});
+  svg.addEventListener("pointerleave",function(){cl.setAttribute("visibility","hidden");cc.setAttribute("visibility","hidden");tip.style.display="none"});
+}
+
+// events
+$("price").value=S.price;
+$("price").addEventListener("input",function(){var n=num(this.value);if(n>=0){S.price=n;save();render()}});
+$("date").value=new Date().toISOString().slice(0,10);
+$("seg").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;type=b.dataset.t;[].forEach.call(this.children,function(x){x.classList.toggle("on",x===b)})});
+$("add").addEventListener("click",function(){
+  var q=num($("qty").value),p=num($("tp").value),d=$("date").value;
+  if(!(q>0)||!(p>=0)||!d){$("qty").focus();return}
+  S.txs.push({id:Date.now(),type:type,date:d,qty:q,price:p});save();loadHist();
+  $("qty").value="";$("tp").value="";render();
+});
+$("txs").addEventListener("click",function(e){var b=e.target.closest("[data-del]");if(!b)return;S.txs=S.txs.filter(function(x){return String(x.id)!==b.dataset.del});save();render();loadHist()});
+function oavg(){var s=num($("osh").value),t=num($("oav").value);$("oavg").textContent=s>0&&t>=0?"Average cost: "+usd(t/s,4):""}
+$("osh").addEventListener("input",oavg);$("oav").addEventListener("input",oavg);
+$("oset").addEventListener("click",function(){var s=num($("osh").value),t=num($("oav").value);if(s>=0&&t>=0){S.ov={shares:s,avg:s?t/s:0};save();render()}});
+$("oclr").addEventListener("click",function(){S.ov=null;$("osh").value="";$("oav").value="";$("oavg").textContent="";save();render()});
+$("wadd").addEventListener("click",function(){
+  var n=$("wn").value.trim(),s=num($("ws").value),a=num($("wc").value),t=a>0?a*s:NaN;
+  if(!n||!(s>0)){$("wn").focus();return}
+  var ex=S.whales.filter(function(w){return w.name.toLowerCase()===n.toLowerCase()})[0];
+  if(ex){ex.cost=ex.cost>0&&t>0?(ex.shares*ex.cost+t)/(ex.shares+s):null;ex.shares+=s}
+  else S.whales.push({name:n,shares:s,cost:a>0?a:null});
+  save();
+  $("wn").value="";$("ws").value="";$("wc").value="";$("wtot").textContent="";render();
+});
+function wtot(){var s=num($("ws").value),a=num($("wc").value);$("wtot").textContent=s>0&&a>0?"Total cost basis: "+usd(s*a):""}
+$("ws").addEventListener("input",wtot);$("wc").addEventListener("input",wtot);
+$("whales").addEventListener("click",function(e){var b=e.target.closest("[data-wadd]");if(!b)return;$("wn").value=S.whales[+b.dataset.wadd].name;$("ws").focus();$("wn").scrollIntoView({block:"center"})});
+function wdel(e){var b=e.target.closest("[data-wdel]");if(!b)return;S.whales.splice(+b.dataset.wdel,1);save();render()}
+$("whales").addEventListener("click",wdel);$("wcards").addEventListener("click",wdel);
+
+$("rng").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;RANGE=b.dataset.r;HIST=[];[].forEach.call(this.children,function(x){x.classList.toggle("on",x===b)});render();loadHist()});
+var HC={},TTL={"1D":6e4,"1W":6e4};
+function loadHist(){var rg=RANGE,c=HC[rg];
+  if(c&&Date.now()-c.t<(TTL[rg]||6e5)){HIST=c.a;render();return}
+  if(c){HIST=c.a;render()}
+  fetch("/api/history?range="+rg).then(function(r){return r.json()}).then(function(a){if(!Array.isArray(a))return;HC[rg]={t:Date.now(),a:a};if(rg===RANGE){HIST=a;render()}}).catch(function(){})}
+function live(){
+  fetch("/api/quote").then(function(r){return r.json()}).then(function(q){
+    if(!(q.price>0))throw 0;
+    S.price=q.price;$("price").value=q.price.toFixed(2);save();render();
+    var ch=q.price-q.prev,t=new Date(q.time*1000).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+    $("status").innerHTML='<span class="'+cls(ch)+'">'+sg(ch)+' ('+(ch/q.prev*100).toFixed(2)+'%)</span> today · live, last trade '+t}
+  ).catch(function(){$("status").textContent="Live quote unavailable. Enter the price manually; it will refresh when the connection returns."})}
+render();loadHist();live();
+</script>
+</body>
+</html>
