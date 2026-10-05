@@ -78,17 +78,24 @@ svg text{font-family:inherit}
     <h1>GME portfolio</h1>
     <div class="hint" style="margin:0 0 14px">GameStop Corp. (NYSE: GME)</div>
     <div class="price">$<input id="price" inputmode="decimal" aria-label="Current GME share price"></div>
-    <div class="hint" id="status">Connecting to live quote…</div>
+    <div class="hint"><span id="status">Connecting to live quote…</span> · <button class="ghost" id="akeybtn" style="padding:0;font-size:13px;text-decoration:underline">API key</button></div>
   </div>
 </header>
+
+<section id="keybox" hidden>
+  <h2>Connect live prices</h2>
+  <p class="sub">Prices come from Alpha Vantage. <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Get a free API key</a> (takes a few seconds), then paste it below. It is saved only in this browser. The free plan allows 25 requests a day, so results are cached.</p>
+  <div class="row"><label>API key<input id="akey" autocomplete="off" spellcheck="false"></label><button id="asave">Save key</button></div>
+  <div class="hint" id="aerr"></div>
+</section>
 
 <section class="stats" id="stats"></section>
 <div class="wcards" id="wcards"></div>
 
 <section>
   <h2>Value over time</h2>
-  <p class="sub">Shares held × GME's historical price.</p>
-  <div class="seg" id="rng" style="width:max-content;margin-bottom:12px"><button data-r="1D">1D</button><button data-r="1W">1W</button><button data-r="1M" class="on">1M</button><button data-r="1Y">1Y</button><button data-r="3Y">3Y</button><button data-r="5Y">5Y</button></div>
+  <p class="sub">Shares held × GME's closing price (daily for 1W–1M, weekly for longer ranges).</p>
+  <div class="seg" id="rng" style="width:max-content;margin-bottom:12px"><button data-r="1W">1W</button><button data-r="1M" class="on">1M</button><button data-r="1Y">1Y</button><button data-r="3Y">3Y</button><button data-r="5Y">5Y</button></div>
   <div id="chart"></div>
 </section>
 
@@ -128,7 +135,7 @@ svg text{font-family:inherit}
 </main>
 
 <script>
-var HIST=[],RANGE="1M",KEY="gme-tracker-v1",S={price:25,txs:[],whales:[],ov:null},type="buy";
+var HIST=[],RANGE="1M",KEY="gme-tracker-v1",S={price:25,txs:[],whales:[{name:"DFV (Keith Gill)",shares:9001000,cost:23.4135},{name:"Ryan Cohen (RC)",shares:45383306,cost:4.87}],ov:null},type="buy";
 try{var raw=localStorage.getItem(KEY);if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 var $=function(i){return document.getElementById(i)};
@@ -207,7 +214,7 @@ function chart(c){
     else{var day=ld(h.t);while(j<c.series.length&&c.series[j].d<=day){s=c.series[j].s;j++}n=s}
     if(n>0)pts.push({d:h.t,v:n*h.c,s:n,p:h.c})});
   if(pts.length&&c.shares>0){pts.push({d:Date.now(),v:c.shares*S.price,s:c.shares,p:S.price,now:1})}
-  if(pts.length<2){$("chart").innerHTML='<div class="empty">'+(!(c.t.length||S.ov)?'Add a trade to see your portfolio value over time.':HIST.length?'No holdings in this time range.':'Loading price history…')+'</div>';return}
+  if(pts.length<2){$("chart").innerHTML='<div class="empty">'+(!(c.t.length||S.ov)?'Add a trade to see your portfolio value over time.':HIST.length?'No holdings in this time range.':apiKey()?'Loading price history…':'Add an Alpha Vantage API key to load price history.')+'</div>';return}
   var W=760,H=260,L=56,R=16,T=14,B=30,tm=function(d){return d};
   var x0=tm(pts[0].d),x1=tm(pts[pts.length-1].d),span=Math.max(x1-x0,1);
   var vs=pts.map(function(p){return p.v}),mx=Math.max.apply(0,vs),mn=Math.min.apply(0,vs);
@@ -221,7 +228,7 @@ function chart(c){
   var area=d+"L"+X(pts[pts.length-1].d).toFixed(1)+" "+Y(mn).toFixed(1)+" L"+X(pts[0].d).toFixed(1)+" "+Y(mn).toFixed(1)+" Z";
   var g="";
   for(var i=0;i<=4;i++){var v=mn+(mx-mn)*i/4,y=Y(v);g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="var(--mute)">'+usd(v,yd)+'</text>'}
-  var fmt=function(s,full){var o=RANGE==="1D"?{hour:"numeric",minute:"2-digit"}:RANGE==="1W"?{month:"short",day:"numeric",hour:"numeric",minute:full?"2-digit":undefined}:{month:"short",day:"numeric",year:"2-digit"};return new Date(s).toLocaleString("en-US",o)};
+  var fmt=function(s){return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"2-digit"})};
   for(var k=0;k<=5;k++){var tx=x0+span*k/5;g+='<line x1="'+X(tx).toFixed(1)+'" x2="'+X(tx).toFixed(1)+'" y1="'+(H-B)+'" y2="'+(H-B+4)+'" stroke="var(--line)"/><text x="'+X(tx).toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(k===0?"start":k===5?"end":"middle")+'" font-size="11" fill="var(--mute)">'+fmt(tx)+'</text>'}
   var dots=pts.slice(-1).map(function(p){return'<circle cx="'+X(p.d).toFixed(1)+'" cy="'+Y(p.v).toFixed(1)+'" r="'+(p.now?5:3.5)+'" fill="'+(p.now?"var(--ink)":"var(--panel)")+'" stroke="var(--ink)" stroke-width="2"><title>'+fmt(p.d)+(p.now?' (now)':'')+': '+usd(p.v)+' · '+sh(p.s)+' shares @ '+usd(p.p)+'</title></circle>'}).join("");
   $("chart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Portfolio value over time">'+g+'<path d="'+area+'" fill="var(--ink)" opacity=".06"/><path d="'+d+'" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>'+dots+'<line id="cl" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--mute)" stroke-dasharray="3 3" visibility="hidden"/><circle id="cc" r="5" fill="var(--ink)" visibility="hidden"/></svg><div class="tip" id="tip"></div>';
@@ -273,18 +280,65 @@ function wdel(e){var b=e.target.closest("[data-wdel]");if(!b)return;S.whales.spl
 $("whales").addEventListener("click",wdel);$("wcards").addEventListener("click",wdel);
 
 $("rng").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;RANGE=b.dataset.r;HIST=[];[].forEach.call(this.children,function(x){x.classList.toggle("on",x===b)});render();loadHist()});
-var HC={},TTL={"1D":6e4,"1W":6e4};
-function loadHist(){var rg=RANGE,c=HC[rg];
-  if(c&&Date.now()-c.t<(TTL[rg]||6e5)){HIST=c.a;render();return}
-  if(c){HIST=c.a;render()}
-  fetch("/api/history?range="+rg).then(function(r){return r.json()}).then(function(a){if(!Array.isArray(a))return;HC[rg]={t:Date.now(),a:a};if(rg===RANGE){HIST=a;render()}}).catch(function(){})}
+var AV="https://www.alphavantage.co/query",CK="gme-av-cache-v1",AK="gme-av-key",CACHE={},INF={};
+try{CACHE=JSON.parse(localStorage.getItem(CK))||{}}catch(e){}
+function cput(k,v){CACHE[k]={t:Date.now(),v:v};try{localStorage.setItem(CK,JSON.stringify(CACHE))}catch(e){}}
+function cget(k,ttl){var c=CACHE[k];return c&&Date.now()-c.t<ttl?c.v:null}
+function apiKey(){try{return localStorage.getItem(AK)||""}catch(e){return""}}
+function showKey(msg){$("keybox").hidden=false;$("aerr").textContent=msg||"";$("akey").value=apiKey();$("akey").focus()}
+function fail(e){if(/invalid or missing/i.test(e.message))showKey(e.message)}
+$("akeybtn").addEventListener("click",function(){showKey("")});
+$("asave").addEventListener("click",function(){
+  var k=$("akey").value.trim();
+  if(!/^[A-Za-z0-9]{6,}$/.test(k)){$("aerr").textContent="That does not look like an API key.";return}
+  try{localStorage.setItem(AK,k)}catch(e){}
+  $("keybox").hidden=true;live();loadHist();
+});
+function av(params){
+  return fetch(AV+"?"+params+"&apikey="+encodeURIComponent(apiKey())).then(function(r){return r.json()}).then(function(j){
+    if(!Object.keys(j).some(function(x){return/Time Series|Global Quote/.test(x)}))throw new Error(j["Error Message"]||j.Note||j.Information||"Unexpected response from Alpha Vantage.");
+    return j});
+}
+// Free tier has no intraday and only 100 daily bars, so long ranges use weekly adjusted (split-adjusted) data.
+function series(fn){
+  var ck="h-"+fn,hit=cget(ck,fn==="TIME_SERIES_DAILY"?216e5:864e5);
+  if(hit)return Promise.resolve(hit);
+  if(INF[ck])return INF[ck];
+  return INF[ck]=av("function="+fn+"&symbol=GME").then(function(j){
+    var k=Object.keys(j).filter(function(x){return/Time Series/.test(x)})[0],o=j[k]||{};
+    var a=Object.keys(o).sort().map(function(d){var x=o[d];return{t:new Date(d+"T12:00:00").getTime(),c:parseFloat(x["5. adjusted close"]||x["4. close"])}}).filter(function(x){return x.c>0});
+    cput(ck,a);delete INF[ck];return a
+  },function(e){delete INF[ck];throw e});
+}
+function loadHist(){
+  if(!apiKey()){render();return}
+  var rg=RANGE,days={"1W":7,"1M":31,"1Y":366,"3Y":1096,"5Y":1827}[rg],fn=days>100?"TIME_SERIES_WEEKLY_ADJUSTED":"TIME_SERIES_DAILY";
+  var use=function(a){if(rg!==RANGE)return;var cut=Date.now()-days*864e5;HIST=a.filter(function(h){return h.t>=cut});render()};
+  series(fn).then(use).catch(function(e){
+    var o=CACHE["h-"+fn];
+    if(o)use(o.v);else $("chart").innerHTML='<div class="empty">'+esc(e.message)+'</div>';
+    fail(e);
+  });
+}
+function showQuote(q,err){
+  S.price=q.price;$("price").value=q.price.toFixed(2);save();render();
+  var ch=q.price-q.prev;
+  $("status").innerHTML=(q.prev>0?'<span class="'+cls(ch)+'">'+sg(ch)+' ('+(ch/q.prev*100).toFixed(2)+'%)</span> · ':'')+'close of '+esc(q.day||'last trading day')+(err?' · '+esc(err):'');
+}
 function live(){
-  fetch("/api/quote").then(function(r){return r.json()}).then(function(q){
-    if(!(q.price>0))throw 0;
-    S.price=q.price;$("price").value=q.price.toFixed(2);save();render();
-    var ch=q.price-q.prev,t=new Date(q.time*1000).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
-    $("status").innerHTML='<span class="'+cls(ch)+'">'+sg(ch)+' ('+(ch/q.prev*100).toFixed(2)+'%)</span> today · live, last trade '+t}
-  ).catch(function(){$("status").textContent="Live quote unavailable. Enter the price manually; it will refresh when the connection returns."})}
+  if(!apiKey()){$("status").textContent="Add an API key to load the price, or type it in manually.";showKey();return}
+  var q=cget("q",9e5);
+  (q?Promise.resolve(q):av("function=GLOBAL_QUOTE&symbol=GME").then(function(j){
+    var g=j["Global Quote"]||{},price=parseFloat(g["05. price"]);
+    if(!(price>0))throw new Error("No quote returned for GME.");
+    var v={price:price,prev:parseFloat(g["08. previous close"]),day:g["07. latest trading day"]};
+    cput("q",v);return v
+  })).then(function(v){showQuote(v)}).catch(function(e){
+    if(CACHE.q)showQuote(CACHE.q.v,e.message);
+    else $("status").textContent=e.message+" Enter the price manually.";
+    fail(e);
+  });
+}
 render();loadHist();live();
 </script>
 </body>
