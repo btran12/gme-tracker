@@ -139,6 +139,20 @@ svg text{font-family:inherit}
   <p class="sub">Buys and sells for you and every holder you track, newest first. Trades before the July 2022 4:1 split are split-adjusted.</p>
   <div class="scroll" id="feed"></div>
 </section>
+
+<section>
+  <h2>Price projection</h2>
+  <p class="sub">Total gain and portfolio value at each price level, stepping up from your target by $5 or $10 increments.</p>
+  <div class="row">
+    <label>Target price<input id="ptarget" inputmode="decimal" placeholder="e.g. 30.00"></label>
+    <label>Increment
+      <select id="pstep"><option value="5">$5</option><option value="10" selected>$10</option></select>
+    </label>
+    <label>Levels<input id="pn" inputmode="numeric" placeholder="10"></label>
+  </div>
+  <div class="scroll" id="proj"></div>
+  <div id="projchart"></div>
+</section>
 </main>
 
 <script>
@@ -221,6 +235,42 @@ function render(){
   ev.sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:0});
   $("feed").innerHTML=ev.length?'<table><thead><tr><th>Date</th><th>Holder</th><th>Type</th><th>Shares</th><th>Avg cost</th><th>Total cost</th></tr></thead><tbody>'+ev.map(function(e){
     return'<tr><td>'+esc(e.d)+'</td><td style="font-weight:'+(e.me?700:500)+'">'+esc(e.who)+'</td><td class="tag '+(e.t==="buy"?"up":"down")+'">'+(e.t==="buy"?"Buy":"Sell")+'</td><td>'+sh(e.q)+'</td><td>'+(e.p>0?usd(e.p):'—')+'</td><td>'+(e.p>0?usd(e.q*e.p,0):'—')+'</td></tr>'}).join("")+'</tbody></table>':'<div class="empty">No activity yet.</div>';
+  proj(c);
+}
+
+function proj(c){
+  var target=num($("ptarget").value),step=num($("pstep").value)||10,n=Math.max(1,Math.min(50,num($("pn").value)||10));
+  if(!(target>0)||!(c.shares>0)){$("proj").innerHTML='<div class="empty">'+(c.shares>0?'Enter a target price above $0 to see projected gains.':'Add trades or set your position to see projected gains.')+'</div>';$("projchart").innerHTML="";return}
+  var rows=[];
+  for(var i=0;i<n;i++){var p=target+i*step,v=c.shares*p,g=v-c.cost;
+    rows.push({p:p,v:v,g:g,pct:c.cost?g/c.cost*100:0})}
+  var h='<table><thead><tr><th>GME price</th><th>Portfolio value</th><th>Total gain</th><th>Gain %</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    h+='<tr><td style="font-weight:'+(i===0?700:500)+'">'+usd(r.p)+'</td><td>'+usd(r.v,0)+'</td><td class="'+cls(r.g)+'">'+sg(r.g).replace(/\.\d\d$/,'')+'</td><td class="'+cls(r.g)+'">'+(r.pct>=0?"+":"")+r.pct.toFixed(1)+'%</td></tr>'});
+  h+='</tbody></table>';
+  $("proj").innerHTML=h;
+  projChart(rows,c);
+}
+
+function projChart(rows,c){
+  var W=760,H=260,L=64,R=16,T=14,Bm=30;
+  var vs=rows.map(function(r){return r.v}),mx=Math.max.apply(0,vs),mn=Math.min(Math.min.apply(0,vs),c.cost);
+  if(mx===mn)mx=mn+1;
+  var pad=(mx-mn)*.08;mx+=pad;mn=Math.max(0,mn-pad);
+  var yd=mx-mn<10?2:0;
+  var X=function(i){return L+(rows.length>1?i/(rows.length-1):0.5)*(W-L-R)},Y=function(v){return T+(1-(v-mn)/(mx-mn))*(H-T-Bm)};
+  var d="";
+  rows.forEach(function(r,i){d+=(i?"L":"M")+X(i).toFixed(1)+" "+Y(r.v).toFixed(1)+" "});
+  var area=d+"L"+X(rows.length-1).toFixed(1)+" "+Y(mn).toFixed(1)+" L"+X(0).toFixed(1)+" "+Y(mn).toFixed(1)+" Z";
+  var g='';
+  for(var i=0;i<=4;i++){var v=mn+(mx-mn)*i/4,y=Y(v);g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="var(--mute)">'+usd(v,yd)+'</text>'}
+  if(c.cost>=mn&&c.cost<=mx){var yc=Y(c.cost);g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yc+'" y2="'+yc+'" stroke="var(--mute)" stroke-dasharray="4 3"/><text x="'+(W-R)+'" y="'+(yc-5)+'" text-anchor="end" font-size="11" fill="var(--mute)">cost basis '+usd(c.cost,0)+'</text>'}
+  var bw=Math.max(4,(W-L-R)/rows.length*.5);
+  rows.forEach(function(r,i){var y0=Y(c.cost),y1=Y(r.v);g+='<rect x="'+(X(i)-bw/2).toFixed(1)+'" y="'+Math.min(y0,y1).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.abs(y0-y1).toFixed(1)+'" fill="'+(r.g>=0?"var(--up)":"var(--down)")+'" opacity=".2"><title>@'+usd(r.p)+': gain '+sg(r.g).replace(/\.\d\d$/,'')+'</title></rect>'});
+  var skip=Math.max(1,Math.ceil(rows.length/8));
+  rows.forEach(function(r,i){if(i%skip&&i!==rows.length-1)return;g+='<text x="'+X(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(i===0?"start":i===rows.length-1?"end":"middle")+'" font-size="11" fill="var(--mute)">'+usd(r.p,0)+'</text>'});
+  var dots=rows.map(function(r,i){return'<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(r.v).toFixed(1)+'" r="3.5" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"><title>@'+usd(r.p)+': value '+usd(r.v,0)+' · gain '+sg(r.g).replace(/\.\d\d$/,'')+'</title></circle>'}).join("");
+  $("projchart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Projected portfolio value and gains by price level" style="margin-top:14px">'+g+'<path d="'+area+'" fill="var(--ink)" opacity=".06"/><path d="'+d+'" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>'+dots+'</svg>';
 }
 
 function chart(c){
@@ -360,6 +410,8 @@ function live(){
     fail(e);
   });
 }
+["ptarget","pn"].forEach(function(id){$(id).addEventListener("input",render)});
+$("pstep").addEventListener("change",render);
 render();loadHist();live();
 </script>
 </body>
