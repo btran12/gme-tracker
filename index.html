@@ -142,13 +142,12 @@ svg text{font-family:inherit}
 
 <section>
   <h2>Price projection</h2>
-  <p class="sub">Total gain and portfolio value at each price level, stepping up from your target by $5 or $10 increments.</p>
+  <p class="sub">Total gain and portfolio value at each price level, stepping from the current price up to your target in $5 or $10 increments.</p>
   <div class="row">
     <label>Target price<input id="ptarget" inputmode="decimal" placeholder="e.g. 30.00"></label>
     <label>Increment
       <select id="pstep"><option value="5">$5</option><option value="10" selected>$10</option></select>
     </label>
-    <label>Levels<input id="pn" inputmode="numeric" placeholder="10"></label>
   </div>
   <div class="scroll" id="proj"></div>
   <div id="projchart"></div>
@@ -239,14 +238,27 @@ function render(){
 }
 
 function proj(c){
-  var target=num($("ptarget").value),step=num($("pstep").value)||10,n=Math.max(1,Math.min(50,num($("pn").value)||10));
+  var target=num($("ptarget").value),step=num($("pstep").value)||10;
   if(!(target>0)||!(c.shares>0)){$("proj").innerHTML='<div class="empty">'+(c.shares>0?'Enter a target price above $0 to see projected gains.':'Add trades or set your position to see projected gains.')+'</div>';$("projchart").innerHTML="";return}
-  var rows=[];
-  for(var i=0;i<n;i++){var p=target+i*step,v=c.shares*p,g=v-c.cost;
-    rows.push({p:p,v:v,g:g,pct:c.cost?g/c.cost*100:0})}
+  // Levels step up from the current price in $5/$10 increments, ending exactly at the target.
+  var cur=S.price>0?S.price:0,start=Math.ceil(cur/step)*step,rows=[];
+  if(start<=cur+1e-9)start+=step; // first level strictly above the current price
+  if(target>=start){
+    var n=Math.max(1,Math.min(49,Math.round((target-start)/step)+1));
+    for(var i=0;i<n;i++){var p=start+i*step,v=c.shares*p,g=v-c.cost;
+      rows.push({p:p,v:v,g:g,pct:c.cost?g/c.cost*100:0})}
+    // drop any increment levels that overshoot the target, then end exactly at it
+    while(rows.length&&rows[rows.length-1].p>target+1e-9)rows.pop();
+    if(!rows.length||Math.abs(rows[rows.length-1].p-target)>1e-9)
+      rows.push({p:target,v:c.shares*target,g:c.shares*target-c.cost,pct:c.cost?(c.shares*target-c.cost)/c.cost*100:0,tgt:1});
+    else rows[rows.length-1].tgt=1; // last increment level equals the target
+  }else{
+    // Target is below the next increment (or below the current price): just show the target level.
+    rows.push({p:target,v:c.shares*target,g:c.shares*target-c.cost,pct:c.cost?(c.shares*target-c.cost)/c.cost*100:0,tgt:1});
+  }
   var h='<table><thead><tr><th>GME price</th><th>Portfolio value</th><th>Total gain</th><th>Gain %</th></tr></thead><tbody>';
   rows.forEach(function(r,i){
-    h+='<tr><td style="font-weight:'+(i===0?700:500)+'">'+usd(r.p)+'</td><td>'+usd(r.v,0)+'</td><td class="'+cls(r.g)+'">'+sg(r.g).replace(/\.\d\d$/,'')+'</td><td class="'+cls(r.g)+'">'+(r.pct>=0?"+":"")+r.pct.toFixed(1)+'%</td></tr>'});
+    h+='<tr><td style="font-weight:'+(i===rows.length-1?700:500)+'">'+usd(r.p)+(r.tgt?' <span class="mute" style="font-size:12px">· target</span>':'')+'</td><td>'+usd(r.v,0)+'</td><td class="'+cls(r.g)+'">'+sg(r.g).replace(/\.\d\d$/,'')+'</td><td class="'+cls(r.g)+'">'+(r.pct>=0?"+":"")+r.pct.toFixed(1)+'%</td></tr>'});
   h+='</tbody></table>';
   $("proj").innerHTML=h;
   projChart(rows,c);
@@ -410,7 +422,7 @@ function live(){
     fail(e);
   });
 }
-["ptarget","pn"].forEach(function(id){$(id).addEventListener("input",render)});
+$("ptarget").addEventListener("input",render);
 $("pstep").addEventListener("change",render);
 render();loadHist();live();
 </script>
