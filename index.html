@@ -239,6 +239,11 @@ function render(){
 
 function proj(c){
   var target=num($("ptarget").value),step=num($("pstep").value)||10;
+  // Default target price to 2x current price (rounded up to nearest step) if not set
+  if(!(target>0)&&S.price>0&&c.shares>0){
+    target=Math.ceil(S.price*2/step)*step;
+    $("ptarget").value=target;
+  }
   if(!(target>0)||!(c.shares>0)){$("proj").innerHTML='<div class="empty">'+(c.shares>0?'Enter a target price above $0 to see projected gains.':'Add trades or set your position to see projected gains.')+'</div>';$("projchart").innerHTML="";return}
   // Levels step up from the current price in $5/$10 increments, ending exactly at the target.
   var cur=S.price>0?S.price:0,start=Math.ceil(cur/step)*step,rows=[];
