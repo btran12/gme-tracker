@@ -1,0 +1,27 @@
+{
+  "shares": 5320.0,
+  "cost_basis": 26.57,
+  "compact": false,
+  "always_on_top": true,
+  "autostart": true,
+  "position": [
+    3810,
+    928
+  ],
+  "last_quote": {
+    "price": 27.88,
+    "prev_close": 27.22,
+    "change": 0.6600000000000001,
+    "change_pct": 2.424687729610581,
+    "day_high": 28.22,
+    "day_low": 27.561,
+    "volume": 7844741,
+    "as_of": 1791997627,
+    "tz_offset": -14400,
+    "pre_open": 1791964800,
+    "post_close": 1792022400,
+    "rth_open": 1791984600,
+    "rth_close": 1792008000,
+    "fetched_at": 1791997640.8859286
+  }
+}
