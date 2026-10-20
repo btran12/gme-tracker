@@ -5,23 +5,23 @@
   "always_on_top": true,
   "autostart": true,
   "position": [
-    3810,
-    928
+    4156,
+    898
   ],
   "last_quote": {
-    "price": 27.88,
-    "prev_close": 27.22,
-    "change": 0.6600000000000001,
-    "change_pct": 2.424687729610581,
-    "day_high": 28.22,
-    "day_low": 27.561,
-    "volume": 7844741,
-    "as_of": 1791997627,
+    "price": 26.47,
+    "prev_close": 26.44,
+    "change": 0.029999999999997584,
+    "change_pct": 0.11346444780634486,
+    "day_high": 26.475,
+    "day_low": 25.3,
+    "volume": 9102452,
+    "as_of": 1792526403,
     "tz_offset": -14400,
-    "pre_open": 1791964800,
-    "post_close": 1792022400,
-    "rth_open": 1791984600,
-    "rth_close": 1792008000,
-    "fetched_at": 1791997640.8859286
+    "pre_open": 1792483200,
+    "post_close": 1792540800,
+    "rth_open": 1792503000,
+    "rth_close": 1792526400,
+    "fetched_at": 1792537211.7132945
   }
 }
